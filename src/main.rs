@@ -2,6 +2,11 @@
 
 use rocket::tokio::time::{sleep, Duration};
 
+#[get("/")]
+async fn index() -> String {
+  format!("Hello, world!")
+}
+
 #[get("/remote/fetch/<remote_url>/<transformations>")]
 async fn remote_fetch(remote_url: String, transformations: String) -> String {
   sleep(Duration::from_secs(1)).await;
@@ -10,5 +15,5 @@ async fn remote_fetch(remote_url: String, transformations: String) -> String {
 
 #[launch]
 fn rocket() -> _ {
-  rocket::build().mount("/", routes![remote_fetch])
+  rocket::build().mount("/", routes![index, remote_fetch])
 }
