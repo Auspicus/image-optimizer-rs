@@ -1,10 +1,10 @@
 FROM rust:1.40 as builder
-WORKDIR /usr/src/myapp
+WORKDIR /usr/src/rustapp
 COPY . .
-RUN rustup override set nightly; \
+RUN rustup override set stable; \
     cargo install --path .
 
 FROM debian:buster-slim
-COPY --from=builder /usr/local/cargo/bin/myapp /usr/local/bin/myapp
-ENV ROCKET_PORT 8080
-CMD myapp
+COPY --from=builder /usr/local/cargo/bin/hello /usr/local/bin/rustapp
+CMD ["rustapp"]
+EXPOSE 8000

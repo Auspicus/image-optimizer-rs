@@ -1,20 +1,14 @@
 #[macro_use] extern crate rocket;
 
-use rocket::serde::json::{Json};
-use rocket::serde::{Serialize};
+use rocket::tokio::time::{sleep, Duration};
 
-#[derive(Serialize)]
-#[serde(crate = "rocket::serde")]
-struct Task {
-  name: String
-}
-
-#[get("/")]
-fn todo() -> Json<Task> {
-    Json(Task { name: "Hello, world".to_string() })
+#[get("/remote/fetch/<remote_url>/<transformations>")]
+async fn remote_fetch(remote_url: String, transformations: String) -> String {
+  sleep(Duration::from_secs(1)).await;
+  format!("Remote URL: {}\r\nTransformations: {}", remote_url, transformations)
 }
 
 #[launch]
 fn rocket() -> _ {
-  rocket::build().mount("/", routes![todo])
+  rocket::build().mount("/", routes![remote_fetch])
 }
