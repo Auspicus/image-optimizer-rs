@@ -22,6 +22,7 @@ impl<'r> Responder<'r, 'static> for ImageResponse {
     Response::build()
       .sized_body(self.bytes.len(), Cursor::new(self.bytes))
       .raw_header("Content-Type", self.mime_type)
+      .raw_header("Cache-Control", "public, max-age=86400")
       .ok()
   }
 }
