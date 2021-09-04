@@ -1,7 +1,8 @@
 FROM rust:1.54 as builder
 WORKDIR /usr/src/rustapp
 COPY . .
-RUN cargo install --path .
+RUN rustup target add x86_64-unknown-linux-gnu; \
+    cargo install --path . --target x86_64-unknown-linux-gnu
 
 FROM debian:buster-slim
 COPY --from=builder /usr/local/cargo/bin/rustapp /usr/local/bin/rustapp
