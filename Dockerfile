@@ -1,10 +1,11 @@
-FROM rust:1.40 as builder
+FROM rust:1.54 as builder
 WORKDIR /usr/src/rustapp
 COPY . .
-RUN rustup override set stable; \
-    cargo install --path .
+RUN cargo install --path .
 
 FROM debian:buster-slim
-COPY --from=builder /usr/local/cargo/bin/hello /usr/local/bin/rustapp
+COPY --from=builder /usr/local/cargo/bin/rustapp /usr/local/bin/rustapp
+ENV ROCKET_ADDRESS="0.0.0.0"
+ENV ROCKET_PORT="8000"
 CMD ["rustapp"]
 EXPOSE 8000

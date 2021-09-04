@@ -509,14 +509,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ab5ef0d4909ef3724cc8cce6ccc8572c5c817592e9285f5464f8e86f8bd3726e"
 
 [[package]]
-name = "hello"
-version = "0.1.0"
-dependencies = [
- "photon-rs",
- "rocket",
-]
-
-[[package]]
 name = "hermit-abi"
 version = "0.1.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1425,6 +1417,14 @@ checksum = "04ada202c9685e1d72a7420c578e92b358dbf807d3dfabb676a3dab9cc3bb12f"
 dependencies = [
  "matrixmultiply",
  "num 0.1.42",
+]
+
+[[package]]
+name = "rustapp"
+version = "0.1.0"
+dependencies = [
+ "photon-rs",
+ "rocket",
 ]
 
 [[package]]
