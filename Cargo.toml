@@ -4,5 +4,4 @@ version = "0.1.0"
 edition = "2018"
 
 [dependencies]
-photon-rs = "0.3.1"
 rocket = { version = "0.5.0-rc.1", features = ["json"] }
