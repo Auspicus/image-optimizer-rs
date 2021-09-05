@@ -1,6 +1,11 @@
 #[macro_use] extern crate rocket;
 
-const MAX_FILE_SIZE: usize = 5 * 1024 * 1024; // 5 MiB.
+// @todo: Cache-Control header on 404 to prevent continuous failover.
+
+const MAX_SOURCE_FILE_SIZE: usize = 10 * 1024 * 1024; // 10 MiB.
+const MAX_SOURCE_RESOLUTION: u32 = 25 * 1000000; // 25 Megapixels.
+const MAX_OUTPUT_FILE_SIZE: usize = 10 * 1024 * 1024; // 10 Megapixels.
+// See: https://support.cloudinary.com/hc/en-us/articles/202520592-Do-you-have-a-file-size-limit-
 
 use std::io::Cursor;
 use std::time::{SystemTime};
@@ -10,6 +15,7 @@ use std::cmp::Ordering;
 use rocket::request::Request;
 use rocket::response::{self, Response, Responder};
 use image::imageops::FilterType;
+use image::{GenericImageView};
 
 #[derive(Clone)]
 struct ImageResponse {
@@ -28,8 +34,8 @@ impl<'r> Responder<'r, 'static> for ImageResponse {
 }
 
 #[get("/")]
-async fn index() -> String {
-  String::from("Health? Check!")
+async fn health_check() -> String {
+  String::from("Health? ✅")
 }
 
 fn mime_type_from_image_format(format: image::ImageFormat) -> Option<String> {
@@ -43,31 +49,19 @@ fn mime_type_from_image_format(format: image::ImageFormat) -> Option<String> {
 #[get("/remote/fetch/<remote_url>/<transformations>")]
 async fn remote_fetch(remote_url: String, transformations: String) -> Option<ImageResponse> {
   let before_request_time = SystemTime::now();
-  let response = match reqwest::get(remote_url).await {
-    Ok(v) => v,
-    Err(_) => {
-      println!("Failed to get image");
-      return None
-    },
-  };
+  let response = reqwest::get(remote_url.to_owned()).await.ok()?;
   let after_image_fetch = SystemTime::now();
   let task_duration = after_image_fetch.duration_since(before_request_time).ok()?.as_millis();
-  println!("Fetch: {}ms", task_duration);
+  println!("FETCH: {} ({}ms)", remote_url, task_duration);
 
   // Create a byte buffer of the raw image data.
-  let body = match response.bytes().await {
-    Ok(v) => v,
-    Err(_) => {
-      println!("Failed to parse image bytes");
-      return None
-    },
-  };
+  let body = response.bytes().await.ok()?;
 
   // Inspect remote image.
   let source_bytes = body.as_ref();
 
-  // Drop files larger than x.
-  if source_bytes.len().cmp(&MAX_FILE_SIZE) == Ordering::Greater {
+  // Drop files larger than x bytes.
+  if source_bytes.len().cmp(&MAX_SOURCE_FILE_SIZE) == Ordering::Greater {
     return None;
   }
 
@@ -76,6 +70,11 @@ async fn remote_fetch(remote_url: String, transformations: String) -> Option<Ima
   // Decode remote image into DynamicImage.
   let decoded_image = image::load_from_memory_with_format(&source_bytes, source_format).ok()?;
 
+  // Drop files larger than x pixels.
+  if (decoded_image.width() * decoded_image.height()).cmp(&MAX_SOURCE_RESOLUTION) == Ordering::Greater {
+    return None;
+  }
+
   // Transform the image arbitrarily.
   let transformed_image = decoded_image.resize_to_fill(
     300,
@@ -83,21 +82,20 @@ async fn remote_fetch(remote_url: String, transformations: String) -> Option<Ima
     FilterType::Triangle
   );
 
+  // @todo: look into performance implications of this:
   mem::drop(decoded_image);
 
   // Encode the DynamicImage into bytes.
-  let mut output_bytes = Vec::with_capacity(transformed_image.as_bytes().len());
-  transformed_image.write_to(&mut output_bytes, source_format).ok();
+  let mut output_bytes = Vec::with_capacity(MAX_OUTPUT_FILE_SIZE);
+  transformed_image.write_to(&mut output_bytes, source_format).ok()?;
 
+  // @todo: look into performance implications of this:
   mem::drop(transformed_image);
 
   let task_duration = SystemTime::now().duration_since(after_image_fetch).ok()?.as_millis();
-  println!("Transform: {}ms", task_duration);
+  println!("TRANS: {}ms", task_duration);
 
-  let mime_type = match mime_type_from_image_format(source_format) {
-    Some(v) => v,
-    None => return None,
-  };
+  let mime_type = mime_type_from_image_format(source_format)?;
 
   Some(ImageResponse {
     mime_type: mime_type.to_owned(),
@@ -109,7 +107,7 @@ async fn remote_fetch(remote_url: String, transformations: String) -> Option<Ima
 fn rocket() -> _ {
   rocket::build()
     .mount("/", routes![
-      index,
+      health_check,
       remote_fetch,
     ])
 }
