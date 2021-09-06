@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::convert::TryFrom;
 use image::{DynamicImage};
-use image::imageops;
+use image::imageops::FilterType;
 
 enum OperationType {
   SCALE,
@@ -29,10 +29,6 @@ impl TryFrom<Vec<&str>> for Operation<OperationType> {
 
     for p in strings {
       let parts = p.split("_").collect::<Vec<_>>();
-      if parts.len() < 2 {
-        return Err("Invalid parameter")
-      }
-
       parameters.insert(parts[0].to_string(), parts[1].to_string());
     }
 
@@ -82,18 +78,17 @@ impl TryFrom<String> for ImageTransformation {
   }
 }
 
-#[derive(Debug, Clone)]
-struct ImageTransformationError;
-
 impl ImageTransformation {
-  pub fn apply_to(&self, dynamic_image_ref: &mut DynamicImage) -> Option<()> {
+  pub fn apply_to(&self, dynamic_image: &DynamicImage) -> Option<DynamicImage> {
+    let mut result: DynamicImage = dynamic_image.to_owned();
+
     for op in &self.operations {
       match op.op_type {
         OperationType::SCALE => {
           let w = op.parameters.get("w")?.parse::<u32>().ok()?;
           let h = op.parameters.get("h")?.parse::<u32>().ok()?;
 
-          imageops::resize(dynamic_image_ref, w, h, imageops::FilterType::Triangle);
+          result = result.resize(w, h, FilterType::Triangle);
         },
         OperationType::CROP => {
           let x = op.parameters.get("x")?.parse::<u32>().ok()?;
@@ -101,11 +96,11 @@ impl ImageTransformation {
           let w = op.parameters.get("w")?.parse::<u32>().ok()?;
           let h = op.parameters.get("h")?.parse::<u32>().ok()?;
 
-          imageops::crop(dynamic_image_ref, x, y, w, h);
+          result = result.crop_imm(x, y, w, h);
         },
       }
     }
 
-    Some(())
+    Some(result)
   }
 }
