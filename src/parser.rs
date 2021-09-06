@@ -2,16 +2,38 @@ use std::collections::HashMap;
 use std::convert::TryFrom;
 use image::{DynamicImage};
 use image::imageops::FilterType;
+use crate::{MAX_OUTPUT_FILE_SIZE};
+use crate::responders::ImageResponse;
 
 enum OperationType {
   SCALE,
   CROP,
+  FORMAT,
+  NOOP,
+}
+
+fn mime_type_from_image_format(f: image::ImageFormat) -> Option<String> {
+  match f {
+    image::ImageFormat::Jpeg => Some(String::from("image/jpeg")),
+    image::ImageFormat::Png => Some(String::from("image/png")),
+    _ => None,
+  }
+}
+
+fn image_format_from_string(s: &str) -> Option<image::ImageFormat> {
+  match s {
+    "jpeg" => Some(image::ImageFormat::Jpeg),
+    "png" => Some(image::ImageFormat::Png),
+    _ => None,
+  }
 }
 
 fn op_type_from_string(s: &str) -> Option<OperationType> {
   match s {
     "scale" => Some(OperationType::SCALE),
     "crop" => Some(OperationType::CROP),
+    "fmt" => Some(OperationType::FORMAT),
+    "noop" => Some(OperationType::NOOP),
     _ => None,
   }
 }
@@ -69,7 +91,7 @@ impl TryFrom<String> for ImageTransformation {
 
     for op_s in string.split("|") {
       let op = match Operation::try_from(op_s.split(",").collect::<Vec<_>>()) {
-        Ok(op) => op,
+        Ok(o) => o,
         Err(_) => {
           return Err("Invalid operation")
         }
@@ -83,11 +105,13 @@ impl TryFrom<String> for ImageTransformation {
 }
 
 impl ImageTransformation {
-  pub fn apply_to(&self, dynamic_image: &DynamicImage) -> Option<DynamicImage> {
+  pub fn apply_to(&self, source_format: &image::ImageFormat, dynamic_image: &DynamicImage) -> Option<ImageResponse> {
+    let mut output_format = source_format.to_owned();
     let mut result: DynamicImage = dynamic_image.to_owned();
 
     for op in &self.operations {
       match op.op_type {
+        OperationType::NOOP => {},
         OperationType::SCALE => {
           let w = op.parameters.get("w")?.parse::<u32>().ok()?;
           let h = op.parameters.get("h")?.parse::<u32>().ok()?;
@@ -102,9 +126,24 @@ impl ImageTransformation {
 
           result = result.crop_imm(x, y, w, h);
         },
+        OperationType::FORMAT => {
+          let f = op.parameters.get("f")?;
+
+          output_format = image_format_from_string(f)?;
+        },
       }
     }
 
-    Some(result)
+    // Encode the DynamicImage into bytes.
+    let mut output_bytes = Vec::with_capacity(MAX_OUTPUT_FILE_SIZE);
+    let output_mime_type = mime_type_from_image_format(output_format)?;
+
+    match output_format {
+      _ => {
+        result.write_to(&mut output_bytes, output_format).ok()?;
+      }
+    }
+
+    Some(ImageResponse::new(output_mime_type, output_bytes))
   }
 }

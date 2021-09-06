@@ -603,6 +603,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "image-optimizer-rs"
+version = "0.1.0"
+dependencies = [
+ "image",
+ "reqwest",
+ "rocket",
+]
+
+[[package]]
 name = "indexmap"
 version = "1.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1257,15 +1266,6 @@ dependencies = [
  "time",
  "tokio",
  "uncased",
-]
-
-[[package]]
-name = "rustapp"
-version = "0.1.0"
-dependencies = [
- "image",
- "reqwest",
- "rocket",
 ]
 
 [[package]]
