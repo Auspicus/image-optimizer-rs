@@ -29,6 +29,10 @@ impl TryFrom<Vec<&str>> for Operation<OperationType> {
 
     for p in strings {
       let parts = p.split("_").collect::<Vec<_>>();
+      if parts.len() != 2 {
+        return Err("Invalid operation")
+      }
+      
       parameters.insert(parts[0].to_string(), parts[1].to_string());
     }
 
