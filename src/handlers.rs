@@ -18,7 +18,7 @@ pub fn image_transformation(source_bytes: &[u8], transformations: String) -> Opt
   let source_format = image::guess_format(&source_bytes).ok()?;
 
   // Decode remote image into DynamicImage.
-  let decoded_image = image::load_from_memory_with_format(&source_bytes, source_format).ok()?;
+  let mut decoded_image = image::load_from_memory_with_format(&source_bytes, source_format).ok()?;
 
   // Drop files larger than x pixels.
   if (decoded_image.width() * decoded_image.height()) > MAX_SOURCE_RESOLUTION {
@@ -28,11 +28,11 @@ pub fn image_transformation(source_bytes: &[u8], transformations: String) -> Opt
 
   // Apply the requested transformations.
   let transformation = ImageTransformation::try_from(transformations.to_string()).ok()?;
-  let transformed_image = transformation.apply_to(&decoded_image)?;
+  transformation.apply_to(&mut decoded_image)?;
 
   // Encode the DynamicImage into bytes.
   let mut output_bytes = Vec::with_capacity(MAX_OUTPUT_FILE_SIZE);
-  transformed_image.write_to(&mut output_bytes, source_format).ok()?;
+  decoded_image.write_to(&mut output_bytes, source_format).ok()?;
 
   let task_duration = SystemTime::now().duration_since(before_transform_time).ok()?.as_millis();
   println!("[TRANS] ({}ms):\r\n{}", task_duration, transformations.to_string());
