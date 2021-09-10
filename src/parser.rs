@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::convert::TryFrom;
+use std::ops::Deref;
 use image::{DynamicImage};
 use image::imageops::FilterType;
 use crate::{MAX_OUTPUT_FILE_SIZE};
@@ -16,6 +17,7 @@ fn mime_type_from_image_format(f: image::ImageFormat) -> Option<String> {
   match f {
     image::ImageFormat::Jpeg => Some(String::from("image/jpeg")),
     image::ImageFormat::Png => Some(String::from("image/png")),
+    image::ImageFormat::WebP => Some(String::from("image/webp")),
     _ => None,
   }
 }
@@ -24,6 +26,7 @@ fn image_format_from_string(s: &str) -> Option<image::ImageFormat> {
   match s {
     "jpeg" => Some(image::ImageFormat::Jpeg),
     "png" => Some(image::ImageFormat::Png),
+    "webp" => Some(image::ImageFormat::WebP),
     _ => None,
   }
 }
@@ -139,6 +142,10 @@ impl ImageTransformation {
     let output_mime_type = mime_type_from_image_format(output_format)?;
 
     match output_format {
+      image::ImageFormat::WebP => {
+        let memory = webp::Encoder::from_image(&result).encode(75.0);
+        output_bytes = Vec::from(memory.deref());
+      },
       _ => {
         result.write_to(&mut output_bytes, output_format).ok()?;
       }

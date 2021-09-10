@@ -6,5 +6,6 @@ RUN cargo install --path .
 FROM debian:buster-slim
 COPY --from=builder /usr/local/cargo/bin/image-optimizer-rs /usr/local/bin/rustapp
 RUN apt-get update -y; \
+    apt-get install libwebp-dev -y; \
     apt-get install ca-certificates -y;
 CMD ["rustapp"]
